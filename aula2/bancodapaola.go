@@ -27,7 +27,7 @@ func main() {
 		fmt.Println("💸 Quanto deseja depositar?")
 		fmt.Scan(&valor)
 		saldo += valor
-		fmt.Println("✨ Depósito realizado com sucesso, diva!")
+		fmt.Println("✨ Depósito realizado com sucesso, gata!")
 	} else {
 		fmt.Println("Eita, esse comando é inválido, tente 'sacar' ou 'depositar'.")
 	}
