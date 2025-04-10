@@ -5,7 +5,7 @@ import "fmt"
 func main() {
 	var idade int
 
-	fmt.Print("Quantos aninhos você tem, diva? 😘 ")
+	fmt.Print("Quantos aninhos você tem, diva? 😘\n")
 	fmt.Scan(&idade)
 
 	if idade < 18 {
