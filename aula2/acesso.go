@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-func main() {
+func acesso() {
 	var usuario, senha string
 
 	fmt.Println("💖 Bem-vindo ao sistema mais glamouroso do universo! 🌟")
