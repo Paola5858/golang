@@ -2,7 +2,7 @@ package main
 
 import "fmt"
 
-func mainVetor() {
+func main() {
  
     ages := [5]int{1, 2, 3, 4, 5}
     names := [5]string{"Paola", "Major", "Fabiano", "Heitor", "Carol"}
