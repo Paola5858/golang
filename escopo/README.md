@@ -48,6 +48,6 @@ go run .
 
 ## 👩‍💻 Autoria
 
-Feito com foco no aprendizado por **Paola** 💋
+Feito com muito foco no aprendizado por **Paola** 💋
 
 ---
