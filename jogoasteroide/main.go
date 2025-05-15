@@ -2,6 +2,7 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 	"log"
 	"math/rand"
@@ -12,15 +13,16 @@ import (
 )
 
 const (
-	screenWidth  = 640
-	screenHeight = 480
-	playerSpeed  = 4
-	playerWidth  = 64
-	playerHeight = 64
-	asteroidWidth  = 64
+	screenWidth   = 640
+	screenHeight  = 480
+	playerSpeed   = 4
+	playerWidth   = 64
+	playerHeight  = 64
+	asteroidWidth = 64
 	asteroidHeight = 64
 	asteroidSpeed = 2
-	numAsteroids = 5
+	numAsteroids  = 5
+	scale         = 0.1
 )
 
 type Asteroid struct {
@@ -34,6 +36,8 @@ type Game struct {
 	asteroids        []Asteroid
 	asteroidImage    *ebiten.Image
 	gameOver         bool
+	startTime        time.Time
+	score int
 }
 
 func (g *Game) Update() error {
@@ -59,6 +63,7 @@ func (g *Game) Update() error {
 		if g.asteroids[i].y > screenHeight {
 			g.asteroids[i].y = -asteroidHeight
 			g.asteroids[i].x = float64(rand.Intn(screenWidth - asteroidWidth))
+			g.score++ // soma pontos ao evitar o asteroide
 		}
 		if checkCollision(g.playerX, g.playerY, g.asteroids[i].x, g.asteroids[i].y) {
 			g.gameOver = true
@@ -72,27 +77,24 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{0, 0, 0, 255})
 
 	if g.gameOver {
-		ebitenutil.DebugPrint(screen, "Game Over!")
-	return
-}
+		msg := fmt.Sprintf("Game Over! Score: %d", g.score)
+		ebitenutil.DebugPrint(screen, msg)
+		return
+	}
 
-// player (nave)
-opPlayer := &ebiten.DrawImageOptions{}
-opPlayer.GeoM.Scale(0.5, 0.5)
-opPlayer.GeoM.Translate(g.playerX, g.playerY)
-screen.DrawImage(g.player, opPlayer)
+	opPlayer := &ebiten.DrawImageOptions{}
+	opPlayer.GeoM.Scale(0.1, 0.1)
+	opPlayer.GeoM.Translate(g.playerX, g.playerY)
+	screen.DrawImage(g.player, opPlayer)
 
-op := &ebiten.DrawImageOptions{}
-op.GeoM.Translate(g.playerX, g.playerY)
-screen.DrawImage(g.player, op)
+	for _, a := range g.asteroids {
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(0.1, 0.1)
+		op.GeoM.Translate(a.x, a.y)
+		screen.DrawImage(a.img, op)
+	}
 
-for _, a := range g.asteroids {
-	op = &ebiten.DrawImageOptions{}
-	op.GeoM.Scale(0.5, 0.5) // mesma coisa aqui
-	op.GeoM.Translate(a.x, a.y)
-	screen.DrawImage(a.img, op)
-}
-
+	ebitenutil.DebugPrint(screen, fmt.Sprintf("Score: %d", g.score))
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
@@ -100,7 +102,10 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 func checkCollision(px, py, ax, ay float64) bool {
-	return px < ax+asteroidWidth && px+playerWidth > ax && py < ay+asteroidHeight && py+playerHeight > ay
+	return px < ax+asteroidWidth*scale &&
+		px+playerWidth*scale > ax &&
+		py < ay+asteroidHeight*scale &&
+		py+playerHeight*scale > ay
 }
 
 func loadImage(path string) *ebiten.Image {
@@ -127,11 +132,13 @@ func main() {
 	}
 
 	game := &Game{
-		playerX:        100,
-		playerY:        100,
+		playerX:        300,
+		playerY:        400,
 		player:         playerImg,
 		asteroids:      asteroids,
 		asteroidImage:  asteroidImg,
+		startTime:      time.Now(),
+		score:          0,
 	}
 
 	ebiten.SetWindowSize(screenWidth, screenHeight)
