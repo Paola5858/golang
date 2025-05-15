@@ -30,6 +30,6 @@ func exibeDados(jogador Jogador) {
 func main() {
 	jogador := Jogador{ Nome: "Paola", vida: 100, nivel: 1}
 	exibeDados(jogador)
-	carro := Carro{Modelo: "Fusca", Ano: 1970, Velocidade: 80, Cor: "azul"}
+	carro := Carro{Modelo: "Ferrari", Ano: 2023, Velocidade: 300, Cor: "Vermelho"}
 	exibeCarro(carro)
 }
