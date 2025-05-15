@@ -36,7 +36,7 @@ var (
 	player2Color     = color.RGBA{255, 80, 80, 255}
 	// Removed unused variable scoreTextColor to fix the compile error
 	gameOverTextColor= color.RGBA{255, 40, 40, 255}
-	menuTextColor    = color.RGBA{220, 220, 220, 255}
+	// Removed unused variable menuTextColor to fix the compile error
 	buttonColor      = color.RGBA{70, 160, 255, 255}
 	buttonHoverColor = color.RGBA{110, 210, 255, 255}
 )
