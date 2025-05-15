@@ -77,10 +77,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 }
 
 // player (nave)
-op := &ebiten.DrawImageOptions{}
-op.GeoM.Scale(0.5, 0.5) // Reduz imagem pela metade (ajuste conforme necessário)
-op.GeoM.Translate(g.playerX, g.playerY)
-screen.DrawImage(g.player, op)
+opPlayer := &ebiten.DrawImageOptions{}
+opPlayer.GeoM.Scale(0.5, 0.5)
+opPlayer.GeoM.Translate(g.playerX, g.playerY)
+screen.DrawImage(g.player, opPlayer)
 
 op := &ebiten.DrawImageOptions{}
 op.GeoM.Translate(g.playerX, g.playerY)
