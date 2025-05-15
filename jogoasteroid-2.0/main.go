@@ -34,7 +34,7 @@ var (
 	bgColor          = color.RGBA{20, 20, 40, 255}
 	player1Color     = color.RGBA{50, 180, 255, 255}
 	player2Color     = color.RGBA{255, 80, 80, 255}
-	scoreTextColor   = color.RGBA{240, 240, 240, 220}
+	// Removed unused variable scoreTextColor to fix the compile error
 	gameOverTextColor= color.RGBA{255, 40, 40, 255}
 	menuTextColor    = color.RGBA{220, 220, 220, 255}
 	buttonColor      = color.RGBA{70, 160, 255, 255}
@@ -397,6 +397,7 @@ func (g *Game) drawPlaying(screen *ebiten.Image) {
 
 func (g *Game) drawGameOver(screen *ebiten.Image) {
 	msg := "GAME OVER!"
+	ebitenutil.DrawRect(screen, screenWidth/2-80, screenHeight/2-110, 160, 30, gameOverTextColor)
 	ebitenutil.DebugPrintAt(screen, msg, screenWidth/2-70, screenHeight/2-100)
 
 	score1Msg := fmt.Sprintf("Player 1 (Azul) Pontos: %d", g.Player1.Score)
