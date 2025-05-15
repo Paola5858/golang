@@ -1,0 +1,22 @@
+{
+  "folders": [
+	{
+		"name": "escopo",
+		"path": "../../escopo/escopo"
+	},
+	{
+		"name": "golang",
+		"path": "../.."
+	}
+],
+  "settings": {
+    "cSpell.words": [
+      "damos",
+      "informação",
+      "Neste",
+      "poderosíssimas",
+      "usamos",
+      "úteis"
+    ]
+  }
+}
