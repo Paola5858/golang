@@ -13,27 +13,29 @@ import (
 )
 
 const (
-	screenWidth   = 640
-	screenHeight  = 480
-	playerSpeed   = 4
-	playerWidth   = 64
-	playerHeight  = 64
-	asteroidWidth = 64
+	screenWidth    = 640
+	screenHeight   = 480
+	playerSpeed    = 4
+	playerWidth    = 64
+	playerHeight   = 64
+	asteroidWidth  = 64
 	asteroidHeight = 64
-	asteroidSpeed = 2
-	numAsteroids  = 5
-	scale         = 0.1
+	asteroidSpeed  = 2
+	numAsteroids   = 5
+	scale          = 0.1
+	spawnInterval  = 60
 )
 
 type Asteroid struct {
-	x, y float64
-	img  *ebiten.Image
+	x, y, speedY float64
+	img          *ebiten.Image
 }
 
 type Game struct {
 	playerX, playerY float64
 	player           *ebiten.Image
 	asteroids        []Asteroid
+	frameCount       int
 	asteroidImage    *ebiten.Image
 	gameOver         bool
 	startTime        time.Time
@@ -59,15 +61,38 @@ func (g *Game) Update() error {
 	}
 
 	for i := range g.asteroids {
-		g.asteroids[i].y += asteroidSpeed
+		g.asteroids[i].y += g.asteroids[i].speedY
 		if g.asteroids[i].y > screenHeight {
 			g.asteroids[i].y = -asteroidHeight
 			g.asteroids[i].x = float64(rand.Intn(screenWidth - asteroidWidth))
-			g.score++ // soma pontos ao evitar o asteroide
+			g.score++
 		}
 		if checkCollision(g.playerX, g.playerY, g.asteroids[i].x, g.asteroids[i].y) {
 			g.gameOver = true
 		}
+	}
+
+	g.frameCount++
+	if g.frameCount%spawnInterval == 0 {
+		newAsteroid := Asteroid{
+			x:      float64(rand.Intn(screenWidth - asteroidWidth)),
+			y:      -float64(asteroidHeight),
+			speedY: 2 + rand.Float64()*3,
+			img:    g.asteroidImage,
+		}
+		g.asteroids = append(g.asteroids, newAsteroid)
+	}
+
+	activeAsteroids := g.asteroids[:0]
+	for _, a := range g.asteroids {
+		if a.y < screenHeight {
+			activeAsteroids = append(activeAsteroids, a)
+		}
+	}
+	g.asteroids = activeAsteroids
+
+	if len(g.asteroids) > numAsteroids {
+		g.asteroids = g.asteroids[:numAsteroids]
 	}
 
 	return nil
@@ -83,13 +108,13 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	opPlayer := &ebiten.DrawImageOptions{}
-	opPlayer.GeoM.Scale(0.1, 0.1)
+	opPlayer.GeoM.Scale(scale, scale)
 	opPlayer.GeoM.Translate(g.playerX, g.playerY)
 	screen.DrawImage(g.player, opPlayer)
 
 	for _, a := range g.asteroids {
 		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Scale(0.1, 0.1)
+		op.GeoM.Scale(scale, scale)
 		op.GeoM.Translate(a.x, a.y)
 		screen.DrawImage(a.img, op)
 	}
@@ -125,9 +150,10 @@ func main() {
 	asteroids := make([]Asteroid, numAsteroids)
 	for i := range asteroids {
 		asteroids[i] = Asteroid{
-			x: float64(rand.Intn(screenWidth - asteroidWidth)),
-			y: float64(rand.Intn(screenHeight - asteroidHeight)),
-			img: asteroidImg,
+			x:      float64(rand.Intn(screenWidth - asteroidWidth)),
+			y:      float64(rand.Intn(screenHeight - asteroidHeight)),
+			speedY: 2 + rand.Float64()*3,
+			img:    asteroidImg,
 		}
 	}
 
