@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	screenWidth    = 640
-	screenHeight   = 480
+	screenWidth    = 1280
+	screenHeight   = 720
 	playerSpeed    = 4
 	playerWidth    = 64
 	playerHeight   = 64
@@ -44,39 +44,31 @@ type Game struct {
 
 func (g *Game) Update() error {
 	if g.gameOver {
+		if ebiten.IsKeyPressed(ebiten.KeyR) {
+			g.restart()
+		}
 		return nil
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) && g.playerX > 0 {
 		g.playerX -= playerSpeed
 	}
-	if ebiten.IsKeyPressed(ebiten.KeyArrowRight) && g.playerX < screenWidth-playerWidth {
+	if ebiten.IsKeyPressed(ebiten.KeyArrowRight) && g.playerX < screenWidth-playerWidth*scale {
 		g.playerX += playerSpeed
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyArrowUp) && g.playerY > 0 {
 		g.playerY -= playerSpeed
 	}
-	if ebiten.IsKeyPressed(ebiten.KeyArrowDown) && g.playerY < screenHeight-playerHeight {
+	if ebiten.IsKeyPressed(ebiten.KeyArrowDown) && g.playerY < screenHeight-playerHeight*scale {
 		g.playerY += playerSpeed
-	}
-
-	for i := range g.asteroids {
-		g.asteroids[i].y += g.asteroids[i].speedY
-		if g.asteroids[i].y > screenHeight {
-			g.asteroids[i].y = -asteroidHeight
-			g.asteroids[i].x = float64(rand.Intn(screenWidth - asteroidWidth))
-			g.score++
-		}
-		if checkCollision(g.playerX, g.playerY, g.asteroids[i].x, g.asteroids[i].y) {
-			g.gameOver = true
-		}
 	}
 
 	g.frameCount++
 	if g.frameCount%spawnInterval == 0 {
+		scaledAW := asteroidWidth * scale
 		newAsteroid := Asteroid{
-			x:      float64(rand.Intn(screenWidth - asteroidWidth)),
-			y:      -float64(asteroidHeight),
+			x:      float64(rand.Intn(screenWidth - int(scaledAW))),
+			y:      -asteroidHeight * scale,
 			speedY: 2 + rand.Float64()*3,
 			img:    g.asteroidImage,
 		}
@@ -84,16 +76,17 @@ func (g *Game) Update() error {
 	}
 
 	activeAsteroids := g.asteroids[:0]
-	for _, a := range g.asteroids {
-		if a.y < screenHeight {
-			activeAsteroids = append(activeAsteroids, a)
+	for i := range g.asteroids {
+		g.asteroids[i].y += g.asteroids[i].speedY
+		if g.asteroids[i].y > screenHeight {
+			continue
 		}
+		if checkCollision(g.playerX, g.playerY, g.asteroids[i].x, g.asteroids[i].y) {
+			g.gameOver = true
+		}
+		activeAsteroids = append(activeAsteroids, g.asteroids[i])
 	}
 	g.asteroids = activeAsteroids
-
-	if len(g.asteroids) > numAsteroids {
-		g.asteroids = g.asteroids[:numAsteroids]
-	}
 
 	return nil
 }
@@ -102,8 +95,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{0, 0, 0, 255})
 
 	if g.gameOver {
-		msg := fmt.Sprintf("Game Over! Score: %d", g.score)
-		ebitenutil.DebugPrint(screen, msg)
+		msg := fmt.Sprintf("Game Over! Score: %d | Pressione R para reiniciar", g.score)
+		textX := (screenWidth - len(msg)*7) / 2
+		textY := screenHeight / 2
+		ebitenutil.DebugPrintAt(screen, msg, textX, textY)
 		return
 	}
 
@@ -127,10 +122,15 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 func checkCollision(px, py, ax, ay float64) bool {
-	return px < ax+asteroidWidth*scale &&
-		px+playerWidth*scale > ax &&
-		py < ay+asteroidHeight*scale &&
-		py+playerHeight*scale > ay
+	playerW := playerWidth * scale
+	playerH := playerHeight * scale
+	asteroidW := asteroidWidth * scale
+	asteroidH := asteroidHeight * scale
+
+	return px < ax+asteroidW &&
+		px+playerW > ax &&
+		py < ay+asteroidH &&
+		py+playerH > ay
 }
 
 func loadImage(path string) *ebiten.Image {
@@ -141,17 +141,31 @@ func loadImage(path string) *ebiten.Image {
 	return img
 }
 
+func (g *Game) restart() {
+	g.playerX = 300
+	g.playerY = 400
+	g.score = 0
+	g.frameCount = 0
+	g.asteroids = nil
+	g.gameOver = false
+}
+
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	playerImg := loadImage("nave.png")
 	asteroidImg := loadImage("asteroide.png")
 
+	scaledWidth := asteroidWidth * scale
+	scaledHeight := asteroidHeight * scale
+
 	asteroids := make([]Asteroid, numAsteroids)
 	for i := range asteroids {
+		x := rand.Intn(screenWidth - int(scaledWidth))
+		y := rand.Intn(screenHeight - int(scaledHeight))
 		asteroids[i] = Asteroid{
-			x:      float64(rand.Intn(screenWidth - asteroidWidth)),
-			y:      float64(rand.Intn(screenHeight - asteroidHeight)),
+			x:      float64(x),
+			y:      float64(y),
 			speedY: 2 + rand.Float64()*3,
 			img:    asteroidImg,
 		}
@@ -167,8 +181,8 @@ func main() {
 		score:          0,
 	}
 
-	ebiten.SetWindowSize(screenWidth, screenHeight)
-	ebiten.SetWindowTitle("Asteroides da Paola 💫")
+	ebiten.SetFullscreen(true)
+	ebiten.SetWindowTitle("Asteroides da Paola 🌫️")
 	if err := ebiten.RunGame(game); err != nil {
 		log.Fatal(err)
 	}
