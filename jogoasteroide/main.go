@@ -1,72 +1,50 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"image"
 	"image/color"
 	"log"
 	"math"
 	"math/rand"
 	"time"
 
-	_ "embed"
-
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/audio"
-	"github.com/hajimehoshi/ebiten/v2/audio/mp3"
 	"github.com/hajimehoshi/ebiten/v2/text"
 	"golang.org/x/image/font"
-	"golang.org/x/image/font/opentype"
+	"golang.org/x/image/font/basicfont"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+
 )
 
-// func loadFont loads a default font face (fallback if no TTF is embedded)
-
-func loadFont(size float64) font.Face {
-	
-	face, err := opentype.NewFace(nil, &opentype.FaceOptions{
-		Size:    size,
-		DPI:     fontDPI,
-		Hinting: font.HintingFull,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	return face
-}
-
-
+// Constants defining game parameters and screen size
 const (
 	screenWidth  = 1280
 	screenHeight = 720
 
-	playerWidth  = 64
-	playerHeight = 64
+	maxAsteroids = 12
 
-	asteroidMinSize = 30
-	asteroidMaxSize = 90
+	playerMaxSpeed = 6.5
+	playerAccel    = 0.35
+	playerFriction = 0.06
 
-	maxAsteroids = 10
+	bulletSpeed  = 14.0
+	bulletMaxAge = 90
+	fireCooldown = 10
 
-	fontSize  = 24
-	fontDPI   = 72
+	explosionFrames = 15
 
-	playerMaxSpeed  = 6.0
-	playerAccel     = 0.2
-	playerFriction  = 0.05
-	bulletSpeed    = 10.0
-	bulletMaxAge   = 60 // frames bullet lasts
-	fireCooldown   = 10 // frames between shots
-	explosionFrames = 12 // frames of explosion animation
-
-	scale = 1.0 // <<< ADICIONE ESTA LINHA
+	scale = 1.0
 )
 
+// Colors for UI and game elements
 var (
-	bgColor    = color.RGBA{5, 5, 12, 255}
-	textColor  = color.RGBA{220, 220, 220, 255}
+	bgColor        = color.White
+	textColor      = color.RGBA{107, 114, 128, 255} // neutral gray (#6b7280)
+	bulletColor    = color.RGBA{0, 0, 0, 255}        // Black bullets
+	explosionColor = color.RGBA{255, 69, 0, 160}     // translucent burning orange
 )
 
+// Different game states
 type GameState int
 
 const (
@@ -75,6 +53,7 @@ const (
 	StateGameOver
 )
 
+// Vector struct represents 2D position or velocity
 type Vector struct {
 	X, Y float64
 }
@@ -101,23 +80,27 @@ func (v Vector) Scaled(s float64) Vector {
 	return Vector{v.X * s, v.Y * s}
 }
 
+// Player struct holds the ship's position, velocity, angle, image and cooldown info
 type Player struct {
 	position Vector
 	velocity Vector
 	angle    float64
-	img      *ebiten.Image
+
+	img *ebiten.Image
 
 	width, height float64
 
 	fireCooldown int
 }
 
+// Bullet struct holds position, velocity and age to expire the bullet
 type Bullet struct {
 	position Vector
 	velocity Vector
 	age      int
 }
 
+// Asteroid struct holds position, velocity, size, rotation angle and rotation speed
 type Asteroid struct {
 	position Vector
 	velocity Vector
@@ -126,61 +109,96 @@ type Asteroid struct {
 	rotSpeed float64
 }
 
+// Explosion struct for visual effect; frames count to animate fading
 type Explosion struct {
 	position Vector
 	frame    int
 	maxFrame int
 }
 
+// Game struct holds entire game state and assets
 type Game struct {
-	player      Player
-	bullets     []Bullet
-	asteroids   []Asteroid
-	explosions  []Explosion
-	score       int
-	state       GameState
-	frames      int
-	fontFace    font.Face
-	audioCtx    *audio.Context
-	soundShoot  *audio.Player
-	soundExpl   *audio.Player
+	player     Player
+	bullets    []Bullet
+	asteroids  []Asteroid
+	explosions []Explosion
+	score      int
+	state      GameState
+	frames     int
+	fontFace   font.Face
+
+	imgPlayer   *ebiten.Image
+	imgAsteroid *ebiten.Image
+	playerW     float64
+	playerH     float64
+	asteroidW   float64
+	asteroidH   float64
 }
 
-func NewGame() *Game {
-	audioCtx := audio.NewContext(44100)
+// loadFont returns a basic, readable font face
+func loadFont() font.Face {
+	return basicfont.Face7x13
+}
 
-	fontFace := loadFont(fontSize)
+// NewGame loads images, initializes fonts and state
+func NewGame() *Game {
+	fontFace := loadFont()
 
 	g := &Game{
 		fontFace: fontFace,
-		audioCtx: audioCtx,
 		state:    StateMenu,
 	}
+
+	// Load images from external files
+	playerImg, _, err := ebitenutil.NewImageFromFile("nave.png")
+if err != nil {
+	log.Fatalf("failed to load nave.png: %v", err)
+}
+
+asteroidImg, _, err := ebitenutil.NewImageFromFile("asteroide.png")
+if err != nil {
+	log.Fatalf("failed to load asteroide.png: %v", err)
+}
+
+
+	// Store images and their natural sizes
+	g.imgPlayer = playerImg
+	bounds := playerImg.Bounds()
+	g.playerW = float64(bounds.Dx())
+	g.playerH = float64(bounds.Dy())
+
+	g.imgAsteroid = asteroidImg
+	boundsAst := asteroidImg.Bounds()
+	g.asteroidW = float64(boundsAst.Dx())
+	g.asteroidH = float64(boundsAst.Dy())
+
+	// Initialize player with scaled size to about 64x64 for neat UI
+
+	g.playerW = 64
+	g.playerH = 64
+
+	// g.player.Scale = playerScale  // se tiver esse campo, por exemplo
+
 	g.player = Player{
 		position: Vector{screenWidth / 2, screenHeight / 2},
-		width:    playerWidth,
-		height:   playerHeight,
-		img:      generatePlayerImage(playerWidth, playerHeight),
+		width:    g.playerW,
+		height:   g.playerH,
+		img:      playerImg,
 	}
-
-	// Load sounds
-	g.soundShoot = loadSound(audioCtx, shootSoundMp3)
-	g.soundExpl = loadSound(audioCtx, explosionSoundMp3)
-
-	// Uncomment to enable looping music if you add music bytes
-	// g.musicPlayer = loadSound(audioCtx, backgroundMusicMp3)
-	// g.musicPlayer.SetVolume(0.3)
-	// g.musicPlayer.Play()
 
 	return g
 }
 
+// Reset initializes game state for a new play session
 func (g *Game) Reset() {
 	g.player = Player{
-		position: Vector{screenWidth / 2, screenHeight / 2},
-		width:    playerWidth,
-		height:   playerHeight,
-		img:      generatePlayerImage(playerWidth, playerHeight),
+		position:    Vector{screenWidth / 2, screenHeight / 2},
+		width:       g.playerW,
+		height:      g.playerH,
+		img:         g.imgPlayer,
+		fireCooldown: 0,
+		velocity:    Vector{0, 0},
+		angle:      0,
 	}
 
 	g.bullets = nil
@@ -190,22 +208,27 @@ func (g *Game) Reset() {
 	g.state = StatePlaying
 	g.frames = 0
 
+	// Spawn initial asteroids with various sizes
 	for i := 0; i < maxAsteroids; i++ {
 		g.spawnAsteroid()
 	}
 }
 
+// spawnAsteroid randomly creates a new asteroid at the top part of the screen
 func (g *Game) spawnAsteroid() {
-	size := float64(rand.Intn(asteroidMaxSize-asteroidMinSize) + asteroidMinSize)
+	minSize := 40.0
+	maxSize := 96.0
+	size := minSize + rand.Float64()*(maxSize-minSize)
+
 	pos := Vector{
 		X: rand.Float64() * float64(screenWidth),
-		Y: rand.Float64()*float64(screenHeight)/4 - size, // Spawn in top quarter, slightly out of screen
+		Y: rand.Float64()*float64(screenHeight)/4 - size,
 	}
 	vel := Vector{
 		X: (rand.Float64()*2 - 1) * 1.5,
 		Y: rand.Float64()*2 + 1,
 	}
-	rotSpeed := (rand.Float64()*2 - 1) * 0.05 // rotation speed -0.05 to 0.05
+	rotSpeed := (rand.Float64()*2 - 1) * 0.04 // smoother rotation
 
 	g.asteroids = append(g.asteroids, Asteroid{
 		position: pos,
@@ -216,69 +239,30 @@ func (g *Game) spawnAsteroid() {
 	})
 }
 
-func generatePlayerImage(w, h int) *ebiten.Image {
-	img := ebiten.NewImage(w, h)
-	// Draw a simple white triangle (ship)
-	white := color.White
-	// draw triangle pointing up
-	points := []image.Point{{w / 2, 0}, {0, h}, {w, h}}
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
-			if pointInTriangle(image.Point{x, y}, points[0], points[1], points[2]) {
-				img.Set(x, y, white)
-			}
-		}
-	}
-	return img
-}
-
-func pointInTriangle(pt, v1, v2, v3 image.Point) bool {
-	d1 := sign(pt, v1, v2)
-	d2 := sign(pt, v2, v3)
-	d3 := sign(pt, v3, v1)
-	hasNeg := (d1 < 0) || (d2 < 0) || (d3 < 0)
-	hasPos := (d1 > 0) || (d2 > 0) || (d3 > 0)
-	return !(hasNeg && hasPos)
-}
-
-func sign(p1, p2, p3 image.Point) int {
-	return (p1.X-p3.X)*(p2.Y-p3.Y) - (p2.X-p3.X)*(p1.Y-p3.Y)
-}
-
-
+// Update is the main game loop called every frame (~60 FPS)
 func (g *Game) Update() error {
-	switch g.state {
-	case StateMenu:
-		return g.updateMenu()
-	case StatePlaying:
-		return g.updatePlaying()
-	case StateGameOver:
-		return g.updateGameOver()
-	}
-	return nil
-}
-
-func (g *Game) updateMenu() error {
-	if ebiten.IsKeyPressed(ebiten.KeyEnter) {
-		g.Reset()
-	}
-	return nil
-}
-
-func (g *Game) updateGameOver() error {
-	if ebiten.IsKeyPressed(ebiten.KeyR) {
-		g.Reset()
-	}
-	return nil
-}
-
-func (g *Game) updatePlaying() error {
 	g.frames++
 
-	// Update player movement
+	switch g.state {
+	case StateMenu:
+		if ebiten.IsKeyPressed(ebiten.KeyEnter) {
+			g.Reset()
+		}
+	case StatePlaying:
+		g.updatePlaying()
+	case StateGameOver:
+		if ebiten.IsKeyPressed(ebiten.KeyR) {
+			g.Reset()
+		}
+	}
+
+	return nil
+}
+
+// updatePlaying contains core game updates and input processing
+func (g *Game) updatePlaying() {
 	g.updatePlayer()
 
-	// Fire bullets
 	if ebiten.IsKeyPressed(ebiten.KeySpace) && g.player.fireCooldown <= 0 {
 		g.fireBullet()
 		g.player.fireCooldown = fireCooldown
@@ -286,41 +270,35 @@ func (g *Game) updatePlaying() error {
 		g.player.fireCooldown--
 	}
 
-	// Update bullets
 	g.updateBullets()
-
-	// Update asteroids
 	g.updateAsteroids()
-
-	// Update explosions
 	g.updateExplosions()
 
-	// Collision detection player & asteroids
+	// Check collision player-asteroid for game over
 	for _, a := range g.asteroids {
-		if circleCollision(g.player.position.X, g.player.position.Y, g.player.width*scale/2, a.position.X, a.position.Y, a.size/2) {
-			// Player died
+		if circleCollision(g.player.position.X, g.player.position.Y, g.player.width/2, a.position.X, a.position.Y, a.size/2) {
 			g.state = StateGameOver
+			break
 		}
 	}
 
-	// Spawn new asteroids if needed
+	// Spawn asteroids to maintain challenge
 	if len(g.asteroids) < maxAsteroids && g.frames%60 == 0 {
 		g.spawnAsteroid()
 	}
-
-	return nil
 }
 
+// updatePlayer processes movement and rotation input
 func (g *Game) updatePlayer() {
-	// Rotate
+	// Rotation input
 	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
-		g.player.angle -= 0.08
+		g.player.angle -= 0.09
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyRight) {
-		g.player.angle += 0.08
+		g.player.angle += 0.09
 	}
 
-	// Accelerate if up pressed
+	// Accelerate forward
 	if ebiten.IsKeyPressed(ebiten.KeyUp) {
 		accel := Vector{
 			X: math.Sin(g.player.angle) * playerAccel,
@@ -328,22 +306,21 @@ func (g *Game) updatePlayer() {
 		}
 		g.player.velocity.Add(accel)
 	} else {
-		// Friction slow down velocity
-		g.player.velocity.X *= 1 - playerFriction
-		g.player.velocity.Y *= 1 - playerFriction
+		g.player.velocity.X *= (1 - playerFriction)
+		g.player.velocity.Y *= (1 - playerFriction)
 	}
 
-	// Limit max speed
+	// Cap velocity
 	speed := g.player.velocity.Len()
 	if speed > playerMaxSpeed {
 		g.player.velocity.Normalize()
 		g.player.velocity = g.player.velocity.Scaled(playerMaxSpeed)
 	}
 
-	// Update player position
+	// Update position
 	g.player.position.Add(g.player.velocity)
 
-	// Screen wrap
+	// Screen wraparound for smooth gameplay
 	if g.player.position.X < 0 {
 		g.player.position.X = screenWidth
 	}
@@ -358,9 +335,10 @@ func (g *Game) updatePlayer() {
 	}
 }
 
+// fireBullet creates a bullet traveling from player's tip
 func (g *Game) fireBullet() {
-	offsetX := math.Sin(g.player.angle) * g.player.height * scale / 2
-	offsetY := -math.Cos(g.player.angle) * g.player.height * scale / 2
+	offsetX := math.Sin(g.player.angle) * g.player.height / 2
+	offsetY := -math.Cos(g.player.angle) * g.player.height / 2
 
 	bulletVel := Vector{
 		X: math.Sin(g.player.angle) * bulletSpeed,
@@ -370,55 +348,53 @@ func (g *Game) fireBullet() {
 		X: g.player.position.X + offsetX,
 		Y: g.player.position.Y + offsetY,
 	}
+
 	g.bullets = append(g.bullets, Bullet{
 		position: bulletPos,
 		velocity: bulletVel,
 		age:      0,
 	})
-
-	go g.soundShoot.Rewind()
-	go g.soundShoot.Play()
 }
 
+// updateBullets moves bullets and handles collisions and lifetimes
 func (g *Game) updateBullets() {
 	activeBullets := g.bullets[:0]
+
 	for i := range g.bullets {
 		b := &g.bullets[i]
 		b.position.Add(b.velocity)
 		b.age++
+
 		if b.age > bulletMaxAge {
 			continue
 		}
-		// Check collision with asteroids
+
 		hit := false
 		for j, a := range g.asteroids {
-			if circleCollision(b.position.X, b.position.Y, 3, a.position.X, a.position.Y, a.size/2) {
-				// Destroy asteroid
+			if circleCollision(b.position.X, b.position.Y, 5, a.position.X, a.position.Y, a.size/2) {
+				// Create explosion effect
 				g.explosions = append(g.explosions, Explosion{
 					position: a.position,
 					frame:    0,
 					maxFrame: explosionFrames,
 				})
-				// Play explosion sound
-				go g.soundExpl.Rewind()
-				go g.soundExpl.Play()
+				// Increase score proportionally to asteroid size
+				g.score += int(a.size) * 10
 
-				g.score += int(a.size)
-
-				// Remove asteroid by swap and truncate
+				// Remove asteroid cleanly
 				g.asteroids = append(g.asteroids[:j], g.asteroids[j+1:]...)
 				hit = true
 				break
 			}
 		}
-		if hit {
-			continue
+		if !hit {
+			activeBullets = append(activeBullets, *b)
 		}
-		activeBullets = append(activeBullets, *b)
 	}
 	g.bullets = activeBullets
 }
 
+// updateAsteroids moves asteroids, applies rotation and screen wrap
 func (g *Game) updateAsteroids() {
 	for i := range g.asteroids {
 		a := &g.asteroids[i]
@@ -426,7 +402,6 @@ func (g *Game) updateAsteroids() {
 		a.position.Add(a.velocity)
 		a.angle += a.rotSpeed
 
-		// Screen wrap asteroid
 		if a.position.X < -a.size {
 			a.position.X = screenWidth + a.size
 		}
@@ -442,6 +417,7 @@ func (g *Game) updateAsteroids() {
 	}
 }
 
+// updateExplosions progresses and removes finished explosion animations
 func (g *Game) updateExplosions() {
 	active := g.explosions[:0]
 	for i := range g.explosions {
@@ -454,13 +430,14 @@ func (g *Game) updateExplosions() {
 	g.explosions = active
 }
 
+// circleCollision detects overlap between two circles (for collision detection)
 func circleCollision(x1, y1, r1, x2, y2, r2 float64) bool {
 	dx := x1 - x2
 	dy := y1 - y2
-	distance := math.Sqrt(dx*dx + dy*dy)
-	return distance < r1+r2
+	return dx*dx+dy*dy < (r1+r2)*(r1+r2)
 }
 
+// Draw renders game content depending on current game state
 func (g *Game) Draw(screen *ebiten.Image) {
 	screen.Fill(bgColor)
 
@@ -474,83 +451,89 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 }
 
+// drawMenu shows game title and instructions with elegant typography
 func (g *Game) drawMenu(screen *ebiten.Image) {
-	str := "ASTERÓIDES DA PAOLA 🌫️\n\n" +
-		"Use setas esquerda/direita para girar\n" +
-		"Seta para cima para acelerar\n" +
-		"Espaço para atirar\n\n" +
-		"Pressione ENTER para começar"
-	drawTextCentered(screen, str, screenWidth/2, screenHeight/2, g.fontFace, textColor)
+	title := "ASTEROIDES PROFISSIONAL"
+	instr := "Setas ← → para girar, ↑ para acelerar\nBarra de espaço para atirar\n\nPressione ENTER para começar"
+	yStart := screenHeight/2 - 80
+
+	text.Draw(screen, title, g.fontFace, screenWidth/2-len(title)*7, yStart, textColor)
+	text.Draw(screen, instr, g.fontFace, screenWidth/2-170, yStart+40, textColor)
 }
 
+// drawPlaying renders the player, asteroids, bullets, explosions and score
 func (g *Game) drawPlaying(screen *ebiten.Image) {
-	// Draw player
-	opPlayer := &ebiten.DrawImageOptions{}
-	opPlayer.GeoM.Translate(-g.player.width/2*scale, -g.player.height/2*scale)
-	opPlayer.GeoM.Rotate(g.player.angle)
-	opPlayer.GeoM.Translate(g.player.position.X, g.player.position.Y)
-	opPlayer.GeoM.Scale(scale, scale)
-	screen.DrawImage(g.player.img, opPlayer)
+	// Draw player ship with rotation and scaled nicely to 64x64
+	op := &ebiten.DrawImageOptions{}
+	scaleFactor := 64.0 / float64(g.imgPlayer.Bounds().Dx())
+	op.GeoM.Translate(-float64(g.imgPlayer.Bounds().Dx())/2, -float64(g.imgPlayer.Bounds().Dy())/2)
+	op.GeoM.Rotate(g.player.angle)
+	op.GeoM.Scale(scaleFactor, scaleFactor)
+	op.GeoM.Translate(g.player.position.X, g.player.position.Y)
+	screen.DrawImage(g.imgPlayer, op)
 
-	// Draw asteroids
+	// Draw asteroids scaled to their size, with rotation
 	for _, a := range g.asteroids {
 		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(-a.size/2, -a.size/2)
+		asteroidBaseSize := float64(g.imgAsteroid.Bounds().Dx())
+		scaleA := a.size / asteroidBaseSize
+		op.GeoM.Translate(-asteroidBaseSize/2, -asteroidBaseSize/2)
 		op.GeoM.Rotate(a.angle)
+		op.GeoM.Scale(scaleA, scaleA)
 		op.GeoM.Translate(a.position.X, a.position.Y)
-		// Draw circle for asteroid (simple)
-		img := generateCircleImage(int(a.size), color.RGBA{150, 150, 150, 255})
-		screen.DrawImage(img, op)
+		screen.DrawImage(g.imgAsteroid, op)
 	}
 
-	// Draw bullets
+	// Draw bullets as crisp black filled circles
 	for _, b := range g.bullets {
 		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(b.position.X-2, b.position.Y-2)
-		bulletImg := generateCircleImage(4, color.RGBA{255, 255, 255, 255})
+		r := 6.0
+		op.GeoM.Translate(b.position.X-r, b.position.Y-r)
+		bulletImg := generateCircleImage(int(r*2), bulletColor)
 		screen.DrawImage(bulletImg, op)
 	}
 
-	// Draw explosions
+	// Draw explosions as pulsating orange circles fading out
 	for _, e := range g.explosions {
 		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(e.position.X-8, e.position.Y-8)
-		expl := generateExplosionImage(e.frame, e.maxFrame)
-		screen.DrawImage(expl, op)
+		alpha := uint8(180 * (1 - float64(e.frame)/float64(e.maxFrame)))
+		color := color.RGBA{255, 69, 0, alpha}
+		explImg := generateCircleImage(40, color)
+		op.GeoM.Translate(e.position.X-20, e.position.Y-20)
+		screen.DrawImage(explImg, op)
 	}
 
+	// Draw score top-left with clean margin and font size
 	scoreText := fmt.Sprintf("Pontos: %d", g.score)
-	text.Draw(screen, scoreText, g.fontFace, 20, 40, textColor)
+	text.Draw(screen, scoreText, g.fontFace, 24, 40, textColor)
 }
 
+// drawGameOver presents final score and restart instruction elegantly centered
 func (g *Game) drawGameOver(screen *ebiten.Image) {
 	lines := []string{
-		"🌟 GAME OVER 🌟",
+		"🌟 FIM DE JOGO 🌟",
 		fmt.Sprintf("Pontos finais: %d", g.score),
-		"Pressione R para jogar novamente",
+		"Pressione R para tentar novamente",
 	}
 
+	yStart := screenHeight/2 - (len(lines) * 20 / 2)
 	for i, line := range lines {
-		textBounds := text.BoundString(g.fontFace, line)
-		x := screenWidth/2 - textBounds.Dx()/2
-		y := screenHeight/2 - len(lines)*20 + i*40
-		text.Draw(screen, line, g.fontFace, x, y, color.RGBA{255, 70, 70, 255})
+		bounds := text.BoundString(g.fontFace, line)
+		x := screenWidth/2 - bounds.Dx()/2
+		y := yStart + i*32
+		text.Draw(screen, line, g.fontFace, x, y, color.RGBA{255, 69, 0, 255})
 	}
 }
 
-func drawTextCentered(screen *ebiten.Image, s string, x, y int, face font.Face, clr color.Color) {
-	bounds := text.BoundString(face, s)
-	text.Draw(screen, s, face, x-bounds.Dx()/2, y-bounds.Dy()/2, clr)
-}
-
+// generateCircleImage makes a filled circle image of specified diameter and color
 func generateCircleImage(d int, clr color.Color) *ebiten.Image {
 	img := ebiten.NewImage(d, d)
+	c := float64(d) / 2
 	for y := 0; y < d; y++ {
 		for x := 0; x < d; x++ {
-			// Circle check
-			dx := float64(x - d/2)
-			dy := float64(y - d/2)
-			if dx*dx+dy*dy <= float64(d*d)/4 {
+			dx := float64(x) - c
+			dy := float64(y) - c
+			if dx*dx+dy*dy <= c*c {
 				img.Set(x, y, clr)
 			}
 		}
@@ -558,31 +541,7 @@ func generateCircleImage(d int, clr color.Color) *ebiten.Image {
 	return img
 }
 
-func generateExplosionImage(frame, maxFrame int) *ebiten.Image {
-	d := 16
-	img := ebiten.NewImage(d, d)
-	alpha := uint8(255 * (1 - float64(frame)/float64(maxFrame)))
-	for y := 0; y < d; y++ {
-		for x := 0; x < d; x++ {
-			img.Set(x, y, color.RGBA{255, 140, 30, alpha})
-		}
-	}
-	return img
-}
-
-func loadSound(ctx *audio.Context, data []byte) *audio.Player {
-	dec, err := mp3.Decode(ctx, bytes.NewReader(data))
-	if err != nil {
-		log.Fatal(err)
-	}
-	p, err := audio.NewPlayer(ctx, dec)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return p
-}
-
-// Layout implements ebiten.Game interface.
+// Layout returns fixed game window size
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return screenWidth, screenHeight
 }
@@ -591,7 +550,7 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	ebiten.SetWindowSize(screenWidth, screenHeight)
-	ebiten.SetWindowTitle("Asteroides da Paola - Profissional 🌫️")
+	ebiten.SetWindowTitle("Asteroides Profissional - Clean & Elegant")
 
 	game := NewGame()
 
@@ -599,18 +558,3 @@ func main() {
 		log.Fatal(err)
 	}
 }
-
-// These are base64-decoded mp3 sounds or can be loaded as raw []byte or external files.
-// For now, they are placeholders. Replace them with actual sound data or files.
-var shootSoundMp3 = []byte{
-	// Put your shoot.mp3 bytes here or load from a file
-}
-
-var explosionSoundMp3 = []byte{
-	// Put your explosion.mp3 bytes here or  load from a file
-}
-
-	// You can embed a TTF font file bytes here to have a nice font, e.g., OpenSans-Regular.ttf
-	// or load via go:embed if you want.
-
-// var fontTTF = []byte{} // Removed embedded font as no file is present
