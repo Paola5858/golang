@@ -10,7 +10,7 @@ import (
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
-	ebiten.SetWindowSize(screenWidth, screenHeight)
+	ebiten.SetWindowSize(ScreenWidth, ScreenHeight)
 	ebiten.SetWindowTitle("Asteroides Profissional - Clean & Elegant")
 	game := NewGame()
 	if err := ebiten.RunGame(game); err != nil {

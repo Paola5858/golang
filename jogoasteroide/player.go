@@ -17,6 +17,9 @@ type Player struct {
 	fireCooldown   int
 	isAccelerating bool
 	health         int
+	shield         int
+	rapidFire      int
+	multiShot      int
 }
 
 func (p *Player) Update() {
@@ -28,38 +31,47 @@ func (p *Player) Update() {
 	}
 	p.isAccelerating = ebiten.IsKeyPressed(ebiten.KeyUp)
 	if p.isAccelerating {
-		p.acceleration = Vector{X: math.Sin(p.angle) * playerAccel, Y: -math.Cos(p.angle) * playerAccel}
+		p.acceleration = Vector{X: math.Sin(p.angle) * PlayerAccel, Y: -math.Cos(p.angle) * PlayerAccel}
 	} else {
 		p.acceleration = Vector{0, 0}
 	}
 	// Apply acceleration to velocity
 	p.velocity.Add(p.acceleration)
 	// Apply friction
-	p.velocity.X *= 1 - playerFriction
-	p.velocity.Y *= 1 - playerFriction
+	p.velocity.X *= 1 - PlayerFriction
+	p.velocity.Y *= 1 - PlayerFriction
 	// Clamp speed
 	speed := p.velocity.Len()
-	if speed > playerMaxSpeed {
+	if speed > PlayerMaxSpeed {
 		p.velocity.Normalize()
-		p.velocity = p.velocity.Scaled(playerMaxSpeed)
+		p.velocity = p.velocity.Scaled(PlayerMaxSpeed)
 	}
 	// Update position
 	p.position.Add(p.velocity)
 	// Wrap around screen
 	if p.position.X < 0 {
-		p.position.X = screenWidth
+		p.position.X = ScreenWidth
 	}
-	if p.position.X > screenWidth {
+	if p.position.X > ScreenWidth {
 		p.position.X = 0
 	}
 	if p.position.Y < 0 {
-		p.position.Y = screenHeight
+		p.position.Y = ScreenHeight
 	}
-	if p.position.Y > screenHeight {
+	if p.position.Y > ScreenHeight {
 		p.position.Y = 0
 	}
 	if p.fireCooldown > 0 {
 		p.fireCooldown--
+	}
+	if p.shield > 0 {
+		p.shield--
+	}
+	if p.rapidFire > 0 {
+		p.rapidFire--
+	}
+	if p.multiShot > 0 {
+		p.multiShot--
 	}
 }
 
@@ -80,6 +92,16 @@ func (p *Player) Draw(screen *ebiten.Image) {
 		op.GeoM.Rotate(p.angle)
 		op.GeoM.Translate(p.position.X-math.Sin(p.angle)*35, p.position.Y+math.Cos(p.angle)*35)
 		img := generateCircleImage(int(r*2), color.RGBA{255, 165, 0, 200})
+		screen.DrawImage(img, op)
+	}
+
+	if p.shield > 0 {
+		// Draw shield
+		op := &ebiten.DrawImageOptions{}
+		r := p.width/2 + 10
+		op.GeoM.Translate(-r, -r)
+		op.GeoM.Translate(p.position.X, p.position.Y)
+		img := generateCircleImage(int(r*2), color.RGBA{0, 255, 255, 128})
 		screen.DrawImage(img, op)
 	}
 }

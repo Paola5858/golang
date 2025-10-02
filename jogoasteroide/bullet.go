@@ -14,12 +14,12 @@ func (b *Bullet) Update() {
 }
 
 func (b *Bullet) IsOffScreen() bool {
-	return b.position.X < -10 || b.position.X > screenWidth+10 || b.position.Y < -10 || b.position.Y > screenHeight+10
+	return b.position.X < -10 || b.position.X > ScreenWidth+10 || b.position.Y < -10 || b.position.Y > ScreenHeight+10
 }
 
 func (b *Bullet) Draw(screen *ebiten.Image) {
 	op := &ebiten.DrawImageOptions{}
 	r := 6.0
 	op.GeoM.Translate(b.position.X-r, b.position.Y-r)
-	screen.DrawImage(imgBullet, op)
+	screen.DrawImage(ImgBullet, op)
 }

@@ -1,8 +1,8 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
-	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -35,10 +35,10 @@ func circleCollision(x1, y1, r1, x2, y2, r2 float64) bool {
 	return dx*dx+dy*dy < (r1+r2)*(r1+r2)
 }
 
-func loadImage(path string) *ebiten.Image {
+func loadImage(path string) (*ebiten.Image, error) {
 	img, _, err := ebitenutil.NewImageFromFile(path)
 	if err != nil {
-		log.Fatalf("failed to load %s: %v", path, err)
+		return nil, fmt.Errorf("failed to load %s: %v", path, err)
 	}
-	return img
+	return img, nil
 }
