@@ -21,6 +21,5 @@ func (b *Bullet) Draw(screen *ebiten.Image) {
 	op := &ebiten.DrawImageOptions{}
 	r := 6.0
 	op.GeoM.Translate(b.position.X-r, b.position.Y-r)
-	img := generateCircleImage(int(r*2), bulletColor)
-	screen.DrawImage(img, op)
+	screen.DrawImage(imgBullet, op)
 }

@@ -16,6 +16,7 @@ type Player struct {
 	width, height  float64
 	fireCooldown   int
 	isAccelerating bool
+	health         int
 }
 
 func (p *Player) Update() {

@@ -40,6 +40,10 @@ var (
 	explosionColor = color.RGBA{255, 69, 0, 160}
 	imgPlayer      *ebiten.Image
 	imgAsteroid    *ebiten.Image
+	imgBullet      *ebiten.Image
+	imgExplosion   *ebiten.Image
+	imgHealthBg    *ebiten.Image
+	imgCooldownBg  *ebiten.Image
 )
 
 type GameState int
@@ -47,23 +51,27 @@ type GameState int
 const (
 	StateMenu GameState = iota
 	StatePlaying
+	StatePaused
 	StateGameOver
 )
 
 type Game struct {
-	player     Player
-	bullets    []Bullet
-	asteroids  []Asteroid
-	explosions []Explosion
-	score      int
-	state      GameState
-	frames     int
-	fontFace   font.Face
-	playerW    float64
-	playerH    float64
-	asteroidW  float64
-	asteroidH  float64
-	scale      float64
+	player       Player
+	bullets      []Bullet
+	asteroids    []Asteroid
+	explosions   []Explosion
+	score        int
+	highScore    int
+	state        GameState
+	frames       int
+	fontFace     font.Face
+	playerW      float64
+	playerH      float64
+	asteroidW    float64
+	asteroidH    float64
+	scale        float64
+	message      string
+	messageTimer int
 }
 
 func NewGame() *Game {
@@ -84,11 +92,19 @@ func NewGame() *Game {
 	g.asteroidW = float64(boundsAst.Dx())
 	g.asteroidH = float64(boundsAst.Dy())
 
+	imgBullet = generateCircleImage(12, bulletColor)
+	imgExplosion = generateCircleImage(40, color.RGBA{255, 69, 0, 255})
+	imgHealthBg = ebiten.NewImage(200, 20)
+	imgHealthBg.Fill(color.RGBA{255, 0, 0, 255})
+	imgCooldownBg = ebiten.NewImage(200, 20)
+	imgCooldownBg.Fill(color.RGBA{0, 0, 255, 255})
+
 	g.player = Player{
 		position: Vector{screenWidth / 2, screenHeight / 2},
 		width:    g.playerW,
 		height:   g.playerH,
 		img:      imgPlayer,
+		health:   3,
 	}
 
 	return g
@@ -103,6 +119,7 @@ func (g *Game) Reset() {
 		velocity:     Vector{0, 0},
 		angle:        0,
 		fireCooldown: 0,
+		health:       3,
 	}
 	g.bullets = nil
 	g.asteroids = nil
@@ -132,8 +149,19 @@ func (g *Game) Update() error {
 		if ebiten.IsKeyPressed(ebiten.KeyEnter) {
 			g.Reset()
 		}
+		if ebiten.IsKeyPressed(ebiten.KeyP) {
+			g.state = StatePaused
+		}
 	case StatePlaying:
-		g.updatePlaying()
+		if ebiten.IsKeyPressed(ebiten.KeyP) {
+			g.state = StatePaused
+		} else {
+			g.updatePlaying()
+		}
+	case StatePaused:
+		if ebiten.IsKeyPressed(ebiten.KeyP) {
+			g.state = StatePlaying
+		}
 	case StateGameOver:
 		if ebiten.IsKeyPressed(ebiten.KeyR) {
 			g.Reset()
@@ -153,7 +181,16 @@ func (g *Game) updatePlaying() {
 	g.updateExplosions()
 	for _, a := range g.asteroids {
 		if circleCollision(g.player.position.X, g.player.position.Y, g.player.width/2, a.position.X, a.position.Y, a.size/2) {
-			g.state = StateGameOver
+			g.player.health--
+			if g.player.health <= 0 {
+				g.state = StateGameOver
+				if g.score > g.highScore {
+					g.highScore = g.score
+				}
+			} else {
+				g.message = "Você foi atingido!"
+				g.messageTimer = 120
+			}
 			break
 		}
 	}
@@ -230,6 +267,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.drawMenu(screen)
 	case StatePlaying:
 		g.drawPlaying(screen)
+	case StatePaused:
+		g.drawPaused(screen)
 	case StateGameOver:
 		g.drawGameOver(screen)
 	}
@@ -241,6 +280,7 @@ func (g *Game) drawMenu(screen *ebiten.Image) {
 	y := screenHeight / 2
 	text.Draw(screen, title, g.fontFace, screenWidth/2-len(title)*7, y-80, textColor)
 	text.Draw(screen, instr, g.fontFace, screenWidth/2-170, y-40, textColor)
+	text.Draw(screen, fmt.Sprintf("Melhor pontuação: %d", g.highScore), g.fontFace, screenWidth/2-100, y-120, textColor)
 }
 
 func (g *Game) drawPlaying(screen *ebiten.Image) {
@@ -255,16 +295,56 @@ func (g *Game) drawPlaying(screen *ebiten.Image) {
 		e.Draw(screen)
 	}
 	text.Draw(screen, fmt.Sprintf("Pontos: %d", g.score), g.fontFace, 24, 40, textColor)
+	text.Draw(screen, fmt.Sprintf("Melhor: %d", g.highScore), g.fontFace, 24, 70, textColor)
+
+	// Draw health bar
+	healthBarWidth := 200.0
+	healthBarHeight := 20.0
+	healthBarX := 24.0
+	healthBarY := 100.0
+	healthFg := ebiten.NewImage(int(healthBarWidth*float64(g.player.health)/3), int(healthBarHeight))
+	healthFg.Fill(color.RGBA{0, 255, 0, 255})
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(healthBarX, healthBarY)
+	screen.DrawImage(imgHealthBg, op)
+	screen.DrawImage(healthFg, op)
+
+	// Draw cooldown bar
+	cooldownBarWidth := 200.0
+	cooldownBarHeight := 20.0
+	cooldownBarX := 24.0
+	cooldownBarY := 130.0
+	op2 := &ebiten.DrawImageOptions{}
+	op2.GeoM.Translate(cooldownBarX, cooldownBarY)
+	screen.DrawImage(imgCooldownBg, op2)
+	if g.player.fireCooldown > 0 {
+		cooldownFg := ebiten.NewImage(int(cooldownBarWidth*float64(g.player.fireCooldown)/fireCooldown), int(cooldownBarHeight))
+		cooldownFg.Fill(color.RGBA{255, 255, 0, 255})
+		screen.DrawImage(cooldownFg, op2)
+	}
+
+	// Draw message if any
+	if g.messageTimer > 0 {
+		bounds := text.BoundString(g.fontFace, g.message)
+		x := screenWidth/2 - bounds.Dx()/2
+		y := screenHeight/2 - bounds.Dy()/2
+		text.Draw(screen, g.message, g.fontFace, x, y, color.RGBA{255, 0, 0, 255})
+		g.messageTimer--
+	}
 }
 
 func (g *Game) drawGameOver(screen *ebiten.Image) {
-	lines := []string{"🌟 FIM DE JOGO 🌟", fmt.Sprintf("Pontos finais: %d", g.score), "Pressione R para tentar novamente"}
+	lines := []string{"🌟 FIM DE JOGO 🌟", fmt.Sprintf("Pontos finais: %d", g.score), fmt.Sprintf("Melhor pontuação: %d", g.highScore), "Pressione R para tentar novamente"}
 	y := screenHeight / 2
 	for i, line := range lines {
 		bounds := text.BoundString(g.fontFace, line)
 		x := screenWidth/2 - bounds.Dx()/2
 		text.Draw(screen, line, g.fontFace, x, y+i*32, color.RGBA{255, 69, 0, 255})
 	}
+}
+
+func (g *Game) drawPaused(screen *ebiten.Image) {
+	text.Draw(screen, "PAUSADO - Pressione P para continuar", g.fontFace, screenWidth/2-150, screenHeight/2, textColor)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {

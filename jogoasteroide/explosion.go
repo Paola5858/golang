@@ -1,8 +1,6 @@
 package main
 
 import (
-	"image/color"
-
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -18,8 +16,8 @@ func (e *Explosion) Update() {
 
 func (e *Explosion) Draw(screen *ebiten.Image) {
 	op := &ebiten.DrawImageOptions{}
-	alpha := uint8(180 * (1 - float64(e.frame)/float64(e.maxFrame)))
-	img := generateCircleImage(40, color.RGBA{255, 69, 0, alpha})
+	alpha := float64(180) * (1 - float64(e.frame)/float64(e.maxFrame)) / 255
+	op.ColorM.Scale(1, 1, 1, alpha)
 	op.GeoM.Translate(e.position.X-20, e.position.Y-20)
-	screen.DrawImage(img, op)
+	screen.DrawImage(imgExplosion, op)
 }
