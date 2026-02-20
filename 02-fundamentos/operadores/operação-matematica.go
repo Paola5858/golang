@@ -9,4 +9,6 @@ func main() {
 	fmt.Println("A multiplicação de", a, "e", b, "é:", a*b)
 	fmt.Println("A divisão de", a, "e", b, "é:", a/b)
 	fmt.Println("O resto da divisão de", a, "e", b, "é:", a%b)
+	
+	logicalOperators()
 	}

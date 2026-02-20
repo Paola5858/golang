@@ -19,8 +19,8 @@ func operaçãoBasica(a int, b int) (int, int, int) {
 }
 func main() {
 	resultado, erro := dividir(10, 2)
-	if erro != "Sem erro" {
-		fmt.Println(erro)
+	if erro != "" {
+		fmt.Println("Erro:", erro)
 	} else {
 		fmt.Println("Oii diva, seu resultado deu:", resultado)
 	}

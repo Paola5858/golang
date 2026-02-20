@@ -17,7 +17,7 @@ func main() {
 	var scoreOne float32 = 0.0
 	scoreTwo := 10.0
 	fmt.Println(" -  Placar atualizado:", scoreOne, scoreTwo)
-	const pi float32 = 3.1465
+	const pi float32 = 3.14159
 	const nome string = "Paola"
 	fmt.Println(" -  Constantes matemáticas e de identidade:", pi, nome)
 	fmt.Println(" -  Fim da execução! Agora é sua vez de brilhar no Go! 🌟")

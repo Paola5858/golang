@@ -9,6 +9,6 @@ func main() {
 	}
 
 	for k, v := range capitais {
-		fmt.Println("Sigra, Nome", k, v)
+		fmt.Println("Sigla, Nome:", k, v)
 	}
 }
