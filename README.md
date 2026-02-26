@@ -1,54 +1,156 @@
-# 🚀 Estudos de Go
+# go learning path
 
-Repositório de aprendizado da linguagem Go, organizado por temas e conceitos fundamentais.
+![Go Version](https://img.shields.io/badge/go-%3E%3D1.21-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Status](https://img.shields.io/badge/status-active-success)
 
-## 📚 Estrutura
+structured learning repository covering go fundamentals through practical examples and projects.
+
+## why this repository?
+
+this isn't just a collection of code snippets. each module:
+- demonstrates a specific concept with working code
+- includes comprehensive documentation
+- provides practical examples and use cases
+- follows go best practices and conventions
+
+ideal for developers learning go or reviewing fundamentals.
+
+## structure
 
 ```
-01-introducao/          → Primeiro contato: variáveis, tipos, constantes
-02-fundamentos/         → Operadores, estruturas de controle, entrada de dados
-03-escopo/              → Escopo de variáveis e funções
-04-funcoes/             → Funções, múltiplos retornos, escopo
-05-ponteiros/           → Ponteiros e passagem por referência
-06-structs/             → Estruturas de dados customizadas
-jogoasteroide/          → Projeto prático: jogo de asteroides
+01-introducao/          variables, types, constants
+02-fundamentos/         operators, control flow, data input, collections
+03-escopo/              variable and function scope
+04-funcoes/             functions, multiple returns
+05-ponteiros/           pointers and memory references
+06-structs/             custom data structures
+jogoasteroide/          practical project: asteroid game with ebiten
 ```
 
-## 🎯 Objetivo
+## quick start
 
-Este repositório documenta minha jornada de aprendizado em Go, com exemplos práticos e exercícios organizados por tema. Cada pasta contém código funcional e um README explicativo.
-
-## 🛠️ Como executar
-
-Navegue até a pasta desejada e execute:
+first time? see [SETUP.md](SETUP.md) for detailed installation guide.
 
 ```bash
+# navigate to any module
+cd 01-introducao
+
+# run the code
 go run .
 ```
 
-Ou para arquivos específicos:
+## core concepts
+
+### basics
+- type system (string, int, float, bool)
+- variable declaration and inference
+- constants and iota
+
+### control structures
+- conditionals (if/else, switch)
+- loops (for, range)
+- defer, panic, recover
+
+### functions
+- multiple return values
+- named returns
+- variadic functions
+- closures
+
+### data structures
+- arrays and slices
+- maps
+- structs and methods
+- interfaces
+
+### memory management
+- pointers and references
+- value vs pointer receivers
+- memory allocation
+
+## practical projects
+
+### banco da paola
+basic banking system demonstrating:
+- state management
+- input validation
+- error handling
+- control flow
+
+### login glamouroso
+authentication system covering:
+- user input processing
+- credential validation
+- conditional logic
+
+### jogo asteroides
+full game implementation using ebiten:
+- game loop architecture
+- collision detection
+- sprite rendering
+- score system
+- entity management
+
+## development setup
 
 ```bash
-go run main.go
+# check go installation
+go version
+
+# run tests
+go test ./...
+
+# format code
+go fmt ./...
+
+# run static analysis
+go vet ./...
 ```
 
-## 📖 Conceitos cobertos
+### using makefile
 
-- Variáveis e tipos de dados
-- Operadores matemáticos e lógicos
-- Estruturas de controle (if, for, range)
-- Funções e múltiplos retornos
-- Arrays, slices e maps
-- Structs e métodos
-- Ponteiros
-- Entrada de dados do usuário
+```bash
+make test      # run all tests
+make fmt       # format code
+make vet       # static analysis
+make run-all   # execute all modules
+```
 
-## 🎮 Projetos práticos
+## learning resources
 
-- **Banco da Paola**: Sistema bancário simples com operações básicas
-- **Login System**: Sistema de autenticação com validação
-- **Jogo Asteroides**: Jogo completo usando Ebiten
+- [official go documentation](https://go.dev/doc/)
+- [effective go](https://go.dev/doc/effective_go)
+- [go by example](https://gobyexample.com/)
+- [go tour](https://go.dev/tour/)
+
+## progress tracking
+
+- [x] basic syntax and types
+- [x] control structures
+- [x] functions and scope
+- [x] pointers
+- [x] structs
+- [x] unit testing basics
+- [ ] interfaces
+- [ ] concurrency (goroutines, channels)
+- [ ] error handling patterns
+- [ ] advanced testing (mocks, benchmarks)
 
 ---
 
-*Repositório em construção. Atualizado conforme avanço nos estudos.*
+## contributing
+
+contributions are welcome! see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## license
+
+this project is licensed under the MIT license - see [LICENSE](LICENSE) for details.
+
+## acknowledgments
+
+- [go documentation](https://go.dev/doc/) for comprehensive language reference
+- [effective go](https://go.dev/doc/effective_go) for best practices
+- [ebiten](https://ebiten.org/) for game development framework
+
+active learning repository. updated as concepts are mastered.

@@ -1,53 +1,82 @@
-# 💻 Repositório: Escopo
+# scope in go
 
-Este é um repositório simples e objetivo que demonstra a criação de **funções matemáticas básicas** em Go, com o objetivo de trabalhar escopo, reutilização de código e separação de responsabilidades entre arquivos.
+understanding variable and function visibility across packages and blocks.
 
-Ideal para estudos de iniciantes em Go! 💡
+## scope levels
 
-## 📁 Estrutura dos Arquivos
+### package scope
+variables declared outside functions are accessible throughout the package.
 
-- `main.go`: Ponto de entrada do programa. Realiza chamadas das funções.
-- `operacoes.go`: Contém todas as funções matemáticas (soma, subtração, multiplicação e divisão).
+```go
+var globalVar = "accessible everywhere in package"
 
-## 🧠 Conceitos aplicados
-
-- Declaração e uso de funções
-- Divisão de código em múltiplos arquivos
-- Visibilidade de escopo no Go (main vs auxiliares)
-- Tipos e retorno de funções
-
-## 🚀 Como executar
-
-1. Clone este repositório:
-
-```bash
-git clone https://github.com/Paola5858/escopo.git
+func main() {
+    fmt.Println(globalVar)
+}
 ```
 
-1. Acesse a pasta:
+### function scope
+variables declared inside functions are local to that function.
 
-```bash
-cd escopo
+```go
+func example() {
+    localVar := "only here"
+    // localVar dies when function returns
+}
 ```
 
-1. Compile e execute o programa:
+### block scope
+variables in `if`, `for`, `switch` blocks are limited to that block.
+
+```go
+if x := 10; x > 5 {
+    // x only exists here
+}
+// x is undefined here
+```
+
+## exported vs unexported
+
+### exported (public)
+starts with uppercase letter, accessible from other packages.
+
+```go
+func PublicFunction() {}
+var PublicVar = 10
+```
+
+### unexported (private)
+starts with lowercase letter, only accessible within the same package.
+
+```go
+func privateFunction() {}
+var privateVar = 10
+```
+
+## shadowing
+
+inner scope can shadow outer scope variables:
+
+```go
+x := 10
+if true {
+    x := 20  // different variable
+    fmt.Println(x)  // prints 20
+}
+fmt.Println(x)  // prints 10
+```
+
+## best practices
+
+- minimize global variables
+- keep scope as narrow as possible
+- avoid shadowing unless intentional
+- use meaningful names to prevent confusion
+
+## run
 
 ```bash
 go run .
 ```
 
-```bash
-go run .
-```
-
-## 🧪 Exemplo de Saída
-
-```bash
-15
-```
-
-## 👩‍💻 Autoria
-
-Feito com muito foco no aprendizado por **Paola** 💋
-
----
+note: this module requires multiple files to demonstrate package-level scope.
